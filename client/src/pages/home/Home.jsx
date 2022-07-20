@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
+import { Web3Storage } from 'web3.storage/dist/bundle.esm.min.js';
 import Stack from '@mui/material/Stack';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Drawer from '@mui/material/Drawer';
 import TextField from '@mui/material/TextField';
+import Input from '@mui/material/Input';
 import LoadingButton from '@mui/lab/LoadingButton';
 import Post from '../../components/Post';
 import SaveIcon from '@mui/icons-material/Save';
@@ -11,19 +13,32 @@ import useEth from "../../contexts/EthContext/useEth";
 import { CircularProgress, Typography } from '@mui/material';
 
 
-const Home = ({ open, setOpen }) => {
-    const { state: { contract, accounts, initialized } } = useEth();
 
+function storageClient() {
+    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweEZFQzM2NTIwOUEwMzU3NzRCRTUyQzkyYUVGNjczYjc4YmE1YTgxYTkiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2NTgyOTU0MDI2MjYsIm5hbWUiOiJibG9nLWFwcC1hcGkifQ.Y4yUYhX1MmMriLV229lE3lkr4Hciu-XtLtEr-dzQeEw";
+    return new Web3Storage({ token: token })
+}
+
+const Home = ({ open, setOpen }) => {
+
+    const { state: { contract, accounts, initialized } } = useEth();
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [posts, setPosts] = useState([]);
     const [creating, setCreating] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [image, setImage] = useState(null);
 
+    // Function to create a new post
     const createPost = async () => {
         setCreating(true);
         try {
-            await contract.methods.createPost(title, content).send({ from: accounts[0] });
+            let cid = "";
+            if (image && image !== null) {
+                const client = storageClient();
+                cid = await client.put([image]);
+            }
+            await contract.methods.createPost(title, content, cid).send({ from: accounts[0] });
             setTitle('');
             setContent('');
             setOpen(false);
@@ -34,31 +49,52 @@ const Home = ({ open, setOpen }) => {
         setCreating(false);
     }
 
+    // Function to get all posts
     const getPosts = async () => {
         setLoading(true);
         try {
             const res = await contract.methods.getPosts().call();
-            const postsList = res.map(post => {
-                return {
-                    id: post.id,
-                    title: post.title,
-                    content: post.content,
-                    author: post.creator
+
+            const postsList = [];
+
+            for (const post of res) {
+                let img = '';
+                if (post.image !== '') {
+                    const client = storageClient();
+                    const res = await client.get(post.image);
+                    if (res.ok) {
+                        // Unpacking File objects from the response
+                        const files = await res.files()
+                        img = files.length > 0 ? `https:/${res.url.substring(res.url.lastIndexOf("/"))}.ipfs.dweb.link/${files[0].name}` : '';
+                    }
                 }
-            });
-            setPosts(postsList);
+
+                postsList.push(
+                    {
+                        id: post.id,
+                        title: post.title,
+                        content: post.content,
+                        image: img,
+                        author: post.creator
+                    }
+                )
+            }
+            setPosts([...postsList]);
         } catch (error) {
             console.log(error);
         }
         setLoading(false);
     }
 
+    // Use Effect to call the getPosts function
+    // Whenever the contract is initialized
     useEffect(() => {
         if (initialized) {
             getPosts();
         }
     }, [initialized]);
 
+    // Returnung the Html elements
     return (loading ?
         <Stack height='90vh' alignItems='center' justifyContent='center' ><CircularProgress /></Stack> :
         <React.Fragment>
@@ -91,12 +127,12 @@ const Home = ({ open, setOpen }) => {
                         label="Body"
                         type="text"
                         variant="outlined"
-                        maxRows={15}
                         rows={5}
                         multiline
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                     />
+                    <Input type='file' onChange={(e) => setImage(e.target.files[0])} />
                     <LoadingButton
                         color="secondary"
                         onClick={createPost}

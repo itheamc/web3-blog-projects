@@ -12,7 +12,7 @@ const Post = ({ post }) => {
                 <CardMedia
                     component="img"
                     height="140"
-                    image="https://source.unsplash.com/random"
+                    image={post.image}  
                     alt="green iguana"
                 />
                 <CardContent>

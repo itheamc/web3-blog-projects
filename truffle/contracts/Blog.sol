@@ -6,6 +6,7 @@ contract Blog {
         uint256 id;
         string title;
         string content;
+        string image;
         address creator;
         uint256 timestamp;
     }
@@ -13,12 +14,17 @@ contract Blog {
     uint256 postsCount;
     mapping(uint256 => Post) public posts;
 
-    function createPost(string memory _title, string memory _content) public {
+    function createPost(
+        string memory _title,
+        string memory _content,
+        string memory _image
+    ) public {
         postsCount++;
         posts[postsCount] = Post(
             postsCount,
             _title,
             _content,
+            _image,
             msg.sender,
             block.timestamp
         );
@@ -31,6 +37,7 @@ contract Blog {
             uint256,
             string memory,
             string memory,
+            string memory,
             address,
             uint256
         )
@@ -40,6 +47,7 @@ contract Blog {
             post.id,
             post.title,
             post.content,
+            post.image,
             post.creator,
             post.timestamp
         );
