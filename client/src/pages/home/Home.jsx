@@ -27,16 +27,16 @@ const Home = ({ open, setOpen }) => {
     const [posts, setPosts] = useState([]);
     const [creating, setCreating] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [image, setImage] = useState(null);
+    const [images, setImages] = useState(null);
 
     // Function to create a new post
     const createPost = async () => {
         setCreating(true);
         try {
             let cid = "";
-            if (image && image !== null) {
+            if (images && images !== null) {
                 const client = storageClient();
-                cid = await client.put([image]);
+                cid = await client.put(images);
             }
             await contract.methods.createPost(title, content, cid).send({ from: accounts[0] });
             setTitle('');
@@ -54,18 +54,20 @@ const Home = ({ open, setOpen }) => {
         setLoading(true);
         try {
             const res = await contract.methods.getPosts().call();
-
             const postsList = [];
 
             for (const post of res) {
                 let img = '';
                 if (post.image !== '') {
                     const client = storageClient();
-                    const res = await client.get(post.image);
-                    if (res.ok) {
+                    const r = await client.get(post.image);
+                    console.log(post.image);
+                    console.log(r);
+                    if (r.ok) {
                         // Unpacking File objects from the response
-                        const files = await res.files()
-                        img = files.length > 0 ? `https:/${res.url.substring(res.url.lastIndexOf("/"))}.ipfs.dweb.link/${files[0].name}` : '';
+                        const files = await r.files()
+                        console.log(files[0]);
+                        img = files.length > 0 ? `https:/${post.image}.ipfs.dweb.link/${files[0].name}` : '';
                     }
                 }
 
@@ -132,7 +134,7 @@ const Home = ({ open, setOpen }) => {
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                     />
-                    <Input type='file' onChange={(e) => setImage(e.target.files[0])} />
+                    <input type='file' onChange={(e) => setImages(e.target.files)} multiple />
                     <LoadingButton
                         color="secondary"
                         onClick={createPost}
