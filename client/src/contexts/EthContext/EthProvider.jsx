@@ -7,25 +7,24 @@ function EthProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const init = useCallback(
-    async artifact => {
+    async (artifact) => {
       if (artifact) {
-        const web3 = new Web3(Web3.givenProvider || "ws://localhost:8545");
-        const accounts = await web3.eth.requestAccounts();
-        const networkID = await web3.eth.net.getId();
-        const { abi } = artifact;
-        let address, contract, initialized;
         try {
+          const web3 = new Web3(Web3.givenProvider || "ws://localhost:8545");
+          const accounts = await web3.eth.requestAccounts();
+          const networkID = await web3.eth.net.getId();
+          const { abi } = artifact;
+          let address, contract, initialized;
           address = artifact.networks[networkID].address;
           contract = new web3.eth.Contract(abi, address);
           initialized = true;
+          dispatch({
+            type: actions.init,
+            data: { artifact, web3, accounts, networkID, contract, initialized }
+          });
         } catch (err) {
-          initialized = false;
-          console.error(err);
+          console.log(err.message);
         }
-        dispatch({
-          type: actions.init,
-          data: { artifact, web3, accounts, networkID, contract, initialized }
-        });
       }
     }, []);
 

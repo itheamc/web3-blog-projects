@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Web3Storage } from 'web3.storage/dist/bundle.esm.min.js';
 import Stack from '@mui/material/Stack';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Drawer from '@mui/material/Drawer';
 import TextField from '@mui/material/TextField';
-import Input from '@mui/material/Input';
 import LoadingButton from '@mui/lab/LoadingButton';
 import Post from '../../components/Post';
 import SaveIcon from '@mui/icons-material/Save';
@@ -49,52 +48,55 @@ const Home = ({ open, setOpen }) => {
         setCreating(false);
     }
 
-    // Function to get all posts
-    const getPosts = async () => {
-        setLoading(true);
-        try {
-            const res = await contract.methods.getPosts().call();
-            const postsList = [];
+    const getPosts = useCallback(
+        async (methods) => {
+            setLoading(true);
+            try {
+                const res = await methods.getPosts().call();
+                const postsList = [];
 
-            for (const post of res) {
-                let img = '';
-                if (post.image !== '') {
-                    const client = storageClient();
-                    const r = await client.get(post.image);
-                    console.log(post.image);
-                    console.log(r);
-                    if (r.ok) {
-                        // Unpacking File objects from the response
-                        const files = await r.files()
-                        console.log(files[0]);
-                        img = files.length > 0 ? `https:/${post.image}.ipfs.dweb.link/${files[0].name}` : '';
+                for (const post of res) {
+                    let img = '';
+                    if (post.image !== '') {
+                        const client = storageClient();
+                        const r = await client.get(post.image);
+                        console.log(post.image);
+                        console.log(r);
+                        if (r.ok) {
+                            // Unpacking File objects from the response
+                            const files = await r.files()
+                            console.log(files[0]);
+                            img = files.length > 0 ? `https:/${post.image}.ipfs.dweb.link/${files[0].name}` : '';
+                        }
                     }
+
+                    postsList.push(
+                        {
+                            id: post.id,
+                            title: post.title,
+                            content: post.content,
+                            image: img,
+                            author: post.creator
+                        }
+                    )
                 }
-
-                postsList.push(
-                    {
-                        id: post.id,
-                        title: post.title,
-                        content: post.content,
-                        image: img,
-                        author: post.creator
-                    }
-                )
+                setPosts([...postsList]);
+            } catch (error) {
+                console.log(error);
             }
-            setPosts([...postsList]);
-        } catch (error) {
-            console.log(error);
-        }
-        setLoading(false);
-    }
+            setLoading(false);
+        },
+        [],
+    )
+
 
     // Use Effect to call the getPosts function
     // Whenever the contract is initialized
     useEffect(() => {
         if (initialized) {
-            getPosts();
+            getPosts(contract.methods);
         }
-    }, [initialized]);
+    }, [initialized, getPosts, contract]);
 
     // Returnung the Html elements
     return (loading ?
